@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple Calculator</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Simple Calculator</h1>
+
+    <div class="calc">
+      <div class="inputs">
+        <label>
+          A
+          <input type="number" id="a" placeholder="Enter number" />
+        </label>
+
+        <label>
+          B
+          <input type="number" id="b" placeholder="Enter number" />
+        </label>
+      </div>
+
+      <div class="operations" role="toolbar" aria-label="operations">
+        <button data-op="+">+</button>
+        <button data-op="-">−</button>
+        <button data-op="*">×</button>
+        <button data-op="/">÷</button>
+        <button data-op="%">%</button>
+        <button data-op="^">^</button>
+        <button id="clear" class="secondary">Clear</button>
+      </div>
+
+      <div class="result-area">
+        <div id="result" class="result">Result: —</div>
+        <div id="error" class="error" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <footer>
+      <small>Powered by Flask (server-side calculation)</small>
+    </footer>
+  </main>
+
+  <script>
+    const buttons = document.querySelectorAll(".operations button[data-op]");
+    const aInput = document.getElementById("a");
+    const bInput = document.getElementById("b");
+    const resultEl = document.getElementById("result");
+    const errorEl = document.getElementById("error");
+    const clearBtn = document.getElementById("clear");
+
+    async function calculate(op) {
+      errorEl.textContent = "";
+      resultEl.textContent = "Calculating...";
+      const payload = {
+        a: aInput.value,
+        b: bInput.value,
+        operation: op
+      };
+
+      try {
+        const res = await fetch("/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          errorEl.textContent = data.error || "Error";
+          resultEl.textContent = "Result: —";
+          return;
+        }
+
+        // Format small floats neatly
+        const value = Number.isFinite(data.result) && Math.abs(data.result) < 1e-6
+          ? data.result.toExponential(6)
+          : data.result;
+        resultEl.textContent = "Result: " + value;
+      } catch (err) {
+        errorEl.textContent = "Network error";
+        resultEl.textContent = "Result: —";
+      }
+    }
+
+    buttons.forEach(btn =>
+      btn.addEventListener("click", () => calculate(btn.dataset.op))
+    );
+
+    clearBtn.addEventListener("click", () => {
+      aInput.value = "";
+      bInput.value = "";
+      resultEl.textContent = "Result: —";
+      errorEl.textContent = "";
+    });
+
+    // Allow Enter key in either input to perform addition by default
+    [aInput, bInput].forEach(el =>
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") calculate("+");
+      })
+    );
+  </script>
+</body>
+</html>
+
+
